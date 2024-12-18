@@ -130,7 +130,7 @@ export default function Dashboard(props) {
             transitionTimingFunction="linear, linear, ease"
           >
             <Portal>
-              <Box>
+            <Box>
                 <Navbar
                   onOpen={onOpen}
                   logoText={'Horizon UI Dashboard PRO'}

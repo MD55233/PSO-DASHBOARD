@@ -241,7 +241,9 @@ app.get('/fetch-sales-by-year', async (req, res) => {
     }
 });
 
-const processExcelFileForTable = (filePath, yearFilter) => {
+
+// Process the Excel file and filter data based on year and month
+const processExcelFileForTable = (filePath, yearFilter, monthFilter) => {
     try {
         console.log(`Processing file for table: ${filePath}`);
         const workbook = XLSX.readFile(filePath);
@@ -255,27 +257,26 @@ const processExcelFileForTable = (filePath, yearFilter) => {
 
             if (jsonData.length === 0) return;
 
-            // Fetch headers
             const headers = jsonData[0].map(h => h.trim().toLowerCase());
 
             if (validateHeaders(headers)) {
                 jsonData.slice(1).forEach(row => {
                     const rowData = {};
-                    let includeRow = true; // Flag to check if the row matches the year filter
+                    let includeRow = true; // Flag to check if the row matches the filters
 
                     headers.forEach((header, index) => {
                         let value = row[index];
 
-                        // Convert Excel serial date numbers to valid date strings
+                        // Handle date conversion
                         if (header.includes('date') && !isNaN(value)) {
                             const date = convertExcelDateToJSDate(value);
-
-                            // Check if the year matches the filter
                             const rowYear = new Date(date).getFullYear();
-                            if (yearFilter && rowYear !== yearFilter) {
+                            const rowMonth = new Date(date).getMonth() + 1;
+
+                            if (yearFilter && rowYear !== yearFilter || monthFilter && rowMonth !== monthFilter) {
                                 includeRow = false;
                             }
-                            value = date; // Set the converted date
+                            value = date;
                         }
 
                         rowData[header] = value;
@@ -301,7 +302,8 @@ const convertExcelDateToJSDate = (serial) => {
     return new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Returns 'YYYY-MM-DD'
 };
 
-const processDirectoryForTable = (directoryPath, yearFilter) => {
+// Process directory and combine all files data
+const processDirectoryForTable = (directoryPath, yearFilter, monthFilter) => {
     try {
         const files = fs.readdirSync(directoryPath);
         const combinedTableData = [];
@@ -309,7 +311,7 @@ const processDirectoryForTable = (directoryPath, yearFilter) => {
         files.forEach(file => {
             const filePath = path.join(directoryPath, file);
             if (fs.lstatSync(filePath).isFile() && file.endsWith('.xlsx')) {
-                const fileTableData = processExcelFileForTable(filePath, yearFilter);
+                const fileTableData = processExcelFileForTable(filePath, yearFilter, monthFilter);
                 combinedTableData.push(...fileTableData);
             }
         });
@@ -321,31 +323,53 @@ const processDirectoryForTable = (directoryPath, yearFilter) => {
     }
 };
 
-// API route to fetch aggregated data and table data by year
-app.get('/fetch-table-data/:year', async (req, res) => {
+// API route to fetch aggregated data and table data by year and month
+app.get('/fetch-table-data/:year/:month', async (req, res) => {
     try {
-        const yearFilter = parseInt(req.params.year, 10); // Extract year from route parameter
+        const yearFilter = parseInt(req.params.year, 10);
+        const monthFilter = req.params.month.toLowerCase();
 
         if (isNaN(yearFilter)) {
             return res.status(400).json({ message: 'Invalid year parameter' });
         }
 
+        const monthMapping = {
+            january: 1,
+            february: 2,
+            march: 3,
+            april: 4,
+            may: 5,
+            june: 6,
+            july: 7,
+            august: 8,
+            september: 9,
+            october: 10,
+            november: 11,
+            december: 12
+        };
+
+        const monthNum = monthMapping[monthFilter];
+        if (!monthNum) {
+            return res.status(400).json({ message: 'Invalid month parameter' });
+        }
+
         const lubricantsPath = path.join(__dirname, 'uploads/excel-files/lubricants');
         const petroleumPath = path.join(__dirname, 'uploads/excel-files/petroleum');
 
-        // Process data for the table with year filter
-        const lubricantsTableData = processDirectoryForTable(lubricantsPath, yearFilter);
-        const petroleumTableData = processDirectoryForTable(petroleumPath, yearFilter);
+        // Process data for the table with year and month filter
+        const lubricantsTableData = processDirectoryForTable(lubricantsPath, yearFilter, monthNum);
+        const petroleumTableData = processDirectoryForTable(petroleumPath, yearFilter, monthNum);
 
         // Combine table data from lubricants and petroleum
         const combinedTableData = [...lubricantsTableData, ...petroleumTableData];
 
         res.status(200).json({
             year: yearFilter,
+            month: monthNum,
             tableData: combinedTableData
         });
     } catch (error) {
-        console.error('Error in /fetch-table-data/:year:', error.message);
+        console.error('Error in /fetch-table-data/:year/:month:', error.message);
         res.status(500).json({ message: 'Internal Server Error', error: error.message });
     }
 });
