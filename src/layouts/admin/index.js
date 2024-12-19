@@ -130,10 +130,10 @@ export default function Dashboard(props) {
             transitionTimingFunction="linear, linear, ease"
           >
             <Portal>
-              <Box>
+            <Box>
                 <Navbar
                   onOpen={onOpen}
-                  logoText={'Horizon UI Dashboard PRO'}
+                  logoText={'Sales Data Management'}
                   brandText={getActiveRoute(routes)}
                   secondary={getActiveNavbar(routes)}
                   message={getActiveNavbarText(routes)}
@@ -161,7 +161,7 @@ export default function Dashboard(props) {
               </Box>
             ) : null}
             <Box>
-              <Footer />
+             
             </Box>
           </Box>
         </SidebarContext.Provider>

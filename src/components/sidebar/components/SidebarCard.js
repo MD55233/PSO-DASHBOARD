@@ -53,7 +53,7 @@ export default function SidebarDocs() {
           px='10px'
           mt="10px"
           mb='6px'>
-          Upgrade to PRO
+          Note!
         </Text>
         <Text
           fontSize='14px'
@@ -62,24 +62,14 @@ export default function SidebarDocs() {
           px='10px'
           mb='6px'
           textAlign='center'>
-          Improve your development process and start doing more with Horizon UI
-          PRO!
+        Upload files only have Header Valid Headers! like:
+        'sales grp', 'customer code', 'customer name',
+        'material code', 'shipping point name', 'vehicle text',
+        'billing date', 'quantity in su'
         </Text>
       </Flex>
-      <Link href='https://horizon-ui.com/pro?ref=horizon-chakra-free'>
-        <Button
-          bg='whiteAlpha.300'
-          _hover={{ bg: "whiteAlpha.200" }}
-          _active={{ bg: "whiteAlpha.100" }}
-          mb={{ sm: "16px", xl: "24px" }}
-          color={"white"}
-          fontWeight='regular'
-          fontSize='sm'
-          minW='185px'
-          mx='auto'>
-          Upgrade to PRO
-        </Button>
-      </Link>
+     
+     
     </Flex>
   );
 }
