@@ -1,305 +1,192 @@
-/*!
-  _   _  ___  ____  ___ ________  _   _   _   _ ___   
- | | | |/ _ \|  _ \|_ _|__  / _ \| \ | | | | | |_ _| 
- | |_| | | | | |_) || |  / / | | |  \| | | | | || | 
- |  _  | |_| |  _ < | | / /| |_| | |\  | | |_| || |
- |_| |_|\___/|_| \_\___/____\___/|_| \_|  \___/|___|
-                                                                                                                                                                                                                                                                                                                                       
-=========================================================
-* Horizon UI - v1.1.0
-=========================================================
-
-* Product Page: https://www.horizon-ui.com/
-* Copyright 2023 Horizon UI (https://www.horizon-ui.com/)
-
-* Designed and Coded by Simmmple
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-*/
-
-import React from "react";
-
-// Chakra imports
+import React, { useEffect, useState } from "react";
 import {
   Box,
-  Button,
-  Flex,
-  Grid,
-  Link,
+  Radio,
+  RadioGroup,
+  Stack,
   Text,
   useColorModeValue,
-  SimpleGrid,
 } from "@chakra-ui/react";
+import { Bar } from "react-chartjs-2";
+import axios from "axios";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js"; // Import necessary components
+import LoadingModal from "./components/LoadingModal";
 
-// Custom components
-import Banner from "views/admin/marketplace/components/Banner";
-import TableTopCreators from "views/admin/marketplace/components/TableTopCreators";
-import HistoryItem from "views/admin/marketplace/components/HistoryItem";
-import NFT from "components/card/NFT";
-import Card from "components/card/Card.js";
+// Register necessary components for chart.js
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-// Assets
-import Nft1 from "assets/img/nfts/Nft1.png";
-import Nft2 from "assets/img/nfts/Nft2.png";
-import Nft3 from "assets/img/nfts/Nft3.png";
-import Nft4 from "assets/img/nfts/Nft4.png";
-import Nft5 from "assets/img/nfts/Nft5.png";
-import Nft6 from "assets/img/nfts/Nft6.png";
-import Avatar1 from "assets/img/avatars/avatar1.png";
-import Avatar2 from "assets/img/avatars/avatar2.png";
-import Avatar3 from "assets/img/avatars/avatar3.png";
-import Avatar4 from "assets/img/avatars/avatar4.png";
-import tableDataTopCreators from "views/admin/marketplace/variables/tableDataTopCreators.json";
-import { tableColumnsTopCreators } from "views/admin/marketplace/variables/tableColumnsTopCreators";
+export default function FetchDataPage() {
+  const [data, setData] = useState({});
+  const [selectedOption, setSelectedOption] = useState("sales-group");
+  const [dataType, setDataType] = useState("lubricants"); // 'lubricants' or 'petroleum'
+  const [isLoading, setIsLoading] = useState(false);
 
-export default function Marketplace() {
-  // Chakra Color Mode
-  const textColor = useColorModeValue("secondaryGray.900", "white");
-  const textColorBrand = useColorModeValue("brand.500", "white");
+  const brandColor = useColorModeValue("brand.500", "white");
+  const boxBg = useColorModeValue("white", "gray.700");
+  const axisColor = useColorModeValue("black", "white");
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    let url = "";
+    try {
+      if (selectedOption === "sales-group") {
+        url = `http://localhost:8000/fetch-data-by-sales-group?type=${dataType}`;
+      } else if (selectedOption === "customer-code") {
+        url = `http://localhost:8000/fetch-data-by-customer-code?type=${dataType}`;
+      } else if (selectedOption === "material-code") {
+        url = `http://localhost:8000/fetch-data-by-material-code?type=${dataType}`;
+      }
+
+      const response = await axios.get(url);
+      setData(response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedOption, dataType]);
+
+  const labels = Object.keys(data);
+  const values = Object.values(data);
+
+  // Dynamically calculate the chart's width
+  const chartWidth = Math.max(labels.length * 50, 800); // Minimum width: 800px, ~50px per bar
+
+  const chartData = {
+    labels,
+    datasets: [
+      {
+        label: `Data for ${dataType} - ${selectedOption.replace("-", " ")}`,
+        data: values,
+        backgroundColor: "rgba(75,192,192,0.6)",
+        borderColor: "rgba(255,255,255,1)",
+        hoverBackgroundColor: "rgba(0,0,0,0.2)",
+        borderWidth: 2,
+        borderRadius: 10,
+        barPercentage: 0.9, // Wider bars
+        categoryPercentage: 0.4, // Reduced spacing
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: axisColor,
+          font: {
+            size: 14,
+            family: "Poppins",
+          },
+        },
+      },
+      tooltip: {
+        callbacks: {
+          title: function (tooltipItems) {
+            // Set the title to the material code
+            return `Material Code: ${tooltipItems[0].label}`;
+          },
+          label: function (tooltipItem) {
+            // Set the label to display the sales value
+            return `Sales: ${tooltipItem.raw.toLocaleString()}`;
+          },
+        },
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        titleFont: { size: 14, weight: "bold" },
+        bodyFont: { size: 12 },
+        cornerRadius: 5,
+        padding: 10,
+      },
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: axisColor,
+          font: { size: 12, family: "Poppins" },
+        },
+        grid: { display: false },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          
+          callback: function (value) {
+            return value.toLocaleString();
+          },
+          color: axisColor,
+          font: { size: 12, family: "Poppins" },
+        },
+        grid: { color: "rgba(200,200,200,0.2)" },
+      },
+    },
+    datasets: {
+      bar: {
+        minBarLength: 5,
+      },
+    },
+  };
+  
   return (
-    <Box pt={{ base: "180px", md: "80px", xl: "80px" }}>
-      {/* Main Fields */}
-      <Grid
-        mb='20px'
-        gridTemplateColumns={{ xl: "repeat(3, 1fr)", "2xl": "1fr 0.46fr" }}
-        gap={{ base: "20px", xl: "20px" }}
-        display={{ base: "block", xl: "grid" }}>
-        <Flex
-          flexDirection='column'
-          gridArea={{ xl: "1 / 1 / 2 / 3", "2xl": "1 / 1 / 2 / 2" }}>
-          <Banner />
-          <Flex direction='column'>
-            <Flex
-              mt='45px'
-              mb='20px'
-              justifyContent='space-between'
-              direction={{ base: "column", md: "row" }}
-              align={{ base: "start", md: "center" }}>
-              <Text color={textColor} fontSize='2xl' ms='24px' fontWeight='700'>
-                Trending NFTs
-              </Text>
-              <Flex
-                align='center'
-                me='20px'
-                ms={{ base: "24px", md: "0px" }}
-                mt={{ base: "20px", md: "0px" }}>
-                <Link
-                  color={textColorBrand}
-                  fontWeight='500'
-                  me={{ base: "34px", md: "44px" }}
-                  to='#art'>
-                  Art
-                </Link>
-                <Link
-                  color={textColorBrand}
-                  fontWeight='500'
-                  me={{ base: "34px", md: "44px" }}
-                  to='#music'>
-                  Music
-                </Link>
-                <Link
-                  color={textColorBrand}
-                  fontWeight='500'
-                  me={{ base: "34px", md: "44px" }}
-                  to='#collectibles'>
-                  Collectibles
-                </Link>
-                <Link color={textColorBrand} fontWeight='500' to='#sports'>
-                  Sports
-                </Link>
-              </Flex>
-            </Flex>
-            <SimpleGrid columns={{ base: 1, md: 3 }} gap='20px'>
-              <NFT
-                name='Abstract Colors'
-                author='By Esthera Jackson'
-                bidders={[
-                  Avatar1,
-                  Avatar2,
-                  Avatar3,
-                  Avatar4,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                ]}
-                image={Nft1}
-                currentbid='0.91 ETH'
-                download='#'
-              />
-              <NFT
-                name='ETH AI Brain'
-                author='By Nick Wilson'
-                bidders={[
-                  Avatar1,
-                  Avatar2,
-                  Avatar3,
-                  Avatar4,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                ]}
-                image={Nft2}
-                currentbid='0.91 ETH'
-                download='#'
-              />
-              <NFT
-                name='Mesh Gradients '
-                author='By Will Smith'
-                bidders={[
-                  Avatar1,
-                  Avatar2,
-                  Avatar3,
-                  Avatar4,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                ]}
-                image={Nft3}
-                currentbid='0.91 ETH'
-                download='#'
-              />
-            </SimpleGrid>
-            <Text
-              mt='45px'
-              mb='36px'
-              color={textColor}
-              fontSize='2xl'
-              ms='24px'
-              fontWeight='700'>
-              Recently Added
-            </Text>
-            <SimpleGrid
-              columns={{ base: 1, md: 3 }}
-              gap='20px'
-              mb={{ base: "20px", xl: "0px" }}>
-              <NFT
-                name='Swipe Circles'
-                author='By Peter Will'
-                bidders={[
-                  Avatar1,
-                  Avatar2,
-                  Avatar3,
-                  Avatar4,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                ]}
-                image={Nft4}
-                currentbid='0.91 ETH'
-                download='#'
-              />
-              <NFT
-                name='Colorful Heaven'
-                author='By Mark Benjamin'
-                bidders={[
-                  Avatar1,
-                  Avatar2,
-                  Avatar3,
-                  Avatar4,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                ]}
-                image={Nft5}
-                currentbid='0.91 ETH'
-                download='#'
-              />
-              <NFT
-                name='3D Cubes Art'
-                author='By Manny Gates'
-                bidders={[
-                  Avatar1,
-                  Avatar2,
-                  Avatar3,
-                  Avatar4,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                  Avatar1,
-                ]}
-                image={Nft6}
-                currentbid='0.91 ETH'
-                download='#'
-              />
-            </SimpleGrid>
-          </Flex>
-        </Flex>
-        <Flex
-          flexDirection='column'
-          gridArea={{ xl: "1 / 3 / 2 / 4", "2xl": "1 / 2 / 2 / 3" }}>
-          <Card px='0px' mb='20px'>
-            <TableTopCreators
-              tableData={tableDataTopCreators}
-              columnsData={tableColumnsTopCreators}
-            />
-          </Card>
-          <Card p='0px'>
-            <Flex
-              align={{ sm: "flex-start", lg: "center" }}
-              justify='space-between'
-              w='100%'
-              px='22px'
-              py='18px'>
-              <Text color={textColor} fontSize='xl' fontWeight='600'>
-                History
-              </Text>
-              <Button variant='action'>See all</Button>
-            </Flex>
+    <Box pt={{ base: "130px", md: "80px", xl: "80px" }}>
+      <LoadingModal isOpen={isLoading} />
 
-            <HistoryItem
-              name='Colorful Heaven'
-              author='By Mark Benjamin'
-              date='30s ago'
-              image={Nft5}
-              price='0.91 ETH'
-            />
-            <HistoryItem
-              name='Abstract Colors'
-              author='By Esthera Jackson'
-              date='58s ago'
-              image={Nft1}
-              price='0.91 ETH'
-            />
-            <HistoryItem
-              name='ETH AI Brain'
-              author='By Nick Wilson'
-              date='1m ago'
-              image={Nft2}
-              price='0.91 ETH'
-            />
-            <HistoryItem
-              name='Swipe Circles'
-              author='By Peter Will'
-              date='1m ago'
-              image={Nft4}
-              price='0.91 ETH'
-            />
-            <HistoryItem
-              name='Mesh Gradients '
-              author='By Will Smith'
-              date='2m ago'
-              image={Nft3}
-              price='0.91 ETH'
-            />
-            <HistoryItem
-              name='3D Cubes Art'
-              author='By Manny Gates'
-              date='3m ago'
-              image={Nft6}
-              price='0.91 ETH'
-            />
-          </Card>
-        </Flex>
-      </Grid>
-      {/* Delete Product */}
+      {/* Data Type Selector */}
+      <Box mb="20px" p="20px" borderRadius="15px" bg={boxBg} boxShadow="md">
+        <Text fontSize="lg" fontWeight="bold" mb="10px" color={brandColor}>
+          Select Data Type:
+        </Text>
+        <RadioGroup
+          onChange={(value) => setDataType(value)}
+          value={dataType}
+          colorScheme="blue"
+        >
+          <Stack direction="row" spacing={6}>
+            <Radio value="lubricants">Lubricants</Radio>
+            <Radio value="petroleum">Petroleum</Radio>
+          </Stack>
+        </RadioGroup>
+      </Box>
+
+      {/* Data Fetch Selector */}
+      <Box mb="20px" p="20px" borderRadius="15px" bg={boxBg} boxShadow="md">
+        <Text fontSize="lg" fontWeight="bold" mb="10px" color={brandColor}>
+          Select Data to Fetch:
+        </Text>
+        <RadioGroup
+          onChange={(value) => setSelectedOption(value)}
+          value={selectedOption}
+          colorScheme="blue"
+        >
+          <Stack direction="row" spacing={6}>
+            <Radio value="sales-group">Sales Group</Radio>
+            <Radio value="customer-code">Customer Code</Radio>
+            <Radio value="material-code">Material Code</Radio>
+          </Stack>
+        </RadioGroup>
+      </Box>
+
+      {/* Scrollable Chart */}
+      <Box
+        p="20px"
+        borderRadius="15px"
+        bg={boxBg}
+        boxShadow="md"
+        overflowX="auto"
+        whiteSpace="nowrap"
+      >
+        <Text fontSize="lg" fontWeight="bold" mb="10px" color={brandColor}>
+          Aggregated Data: {dataType.toUpperCase()} - {selectedOption.replace("-", " ").toUpperCase()}
+        </Text>
+        <Box height="500px" minWidth={`${chartWidth}px`} overflow="hidden">
+          <Bar data={chartData} options={chartOptions} />
+        </Box>
+      </Box>
     </Box>
   );
 }

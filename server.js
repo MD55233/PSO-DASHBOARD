@@ -52,6 +52,60 @@ app.post('/upload-excel', parseFileType, upload.array('files', 5), (req, res) =>
         res.status(500).send({ message: 'Failed to upload files.', error: error.message });
     }
 });
+{/*-------------------------------- Delete files ------------------------------------------*/}
+// Route to fetch all files based on fileType
+app.get('/fetch-files', (req, res) => {
+    try {
+        const lubricantsFolder = 'uploads/excel-files/lubricants';
+        const petroleumFolder = 'uploads/excel-files/petroleum';
+
+        const lubricants = fs.existsSync(lubricantsFolder)
+            ? fs.readdirSync(lubricantsFolder).map((file) => ({ name: file }))
+            : [];
+        const petroleum = fs.existsSync(petroleumFolder)
+            ? fs.readdirSync(petroleumFolder).map((file) => ({ name: file }))
+            : [];
+
+        res.status(200).send({ lubricants, petroleum });
+    } catch (error) {
+        res.status(500).send({ message: 'Failed to fetch files.', error: error.message });
+    }
+});
+
+// Route to delete a specific file
+app.delete('/delete-file', (req, res) => {
+    const { fileType, fileName } = req.query;
+
+    if (!fileType || !fileName) {
+        return res.status(400).send({ message: 'fileType and fileName are required.' });
+    }
+
+    const filePath = path.join(__dirname, `uploads/excel-files/${fileType}/${fileName}`);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).send({ message: 'File not found.' });
+    }
+
+    fs.unlinkSync(filePath);
+    res.status(200).send({ message: 'File deleted successfully.' });
+});
+
+// Route to delete all files in a folder
+app.delete('/delete-all-files', (req, res) => {
+    const { fileType } = req.query;
+
+    if (!fileType || !['lubricants', 'petroleum'].includes(fileType)) {
+        return res.status(400).send({ message: 'Invalid fileType. Allowed: lubricants, petroleum' });
+    }
+
+    const folder = path.join(__dirname, `uploads/excel-files/${fileType}`);
+    if (!fs.existsSync(folder)) {
+        return res.status(404).send({ message: 'Folder not found.' });
+    }
+
+    fs.readdirSync(folder).forEach(file => fs.unlinkSync(path.join(folder, file)));
+    res.status(200).send({ message: 'All files deleted successfully.' });
+});
+
 
 {/*-------------------------------- Validate Header in sheets ------------------------------------------*/}
 
@@ -241,6 +295,127 @@ app.get('/fetch-sales-by-year', async (req, res) => {
     }
 });
 
+
+{/*-------------------------------- Fetch Data by Sales Group ------------------------------------------*/}
+app.get('/fetch-data-by-sales-group', async (req, res) => {
+    try {
+        const type = validateType(req.query.type);
+        const folderPath = getFolderPath(type);
+        const data = processDirectoryByHeader(folderPath, 'sales grp');
+        res.status(200).json(data);
+    } catch (error) {
+        handleError(res, error, '/fetch-data-by-sales-group');
+    }
+});
+
+{/*-------------------------------- Fetch Data by Customer Code ------------------------------------------*/}
+app.get('/fetch-data-by-customer-code', async (req, res) => {
+    try {
+        const type = validateType(req.query.type);
+        const folderPath = getFolderPath(type);
+        const data = processDirectoryByHeader(folderPath, 'customer code');
+        res.status(200).json(data);
+    } catch (error) {
+        handleError(res, error, '/fetch-data-by-customer-code');
+    }
+});
+
+{/*-------------------------------- Fetch Data by Material Code ------------------------------------------*/}
+app.get('/fetch-data-by-material-code', async (req, res) => {
+    try {
+        const type = validateType(req.query.type);
+        const folderPath = getFolderPath(type);
+        const data = processDirectoryByHeader(folderPath, 'material code');
+        res.status(200).json(data);
+    } catch (error) {
+        handleError(res, error, '/fetch-data-by-material-code');
+    }
+});
+
+{/*-------------------------------- Utility Functions ------------------------------------------*/}
+
+// Function to validate query parameter
+const validateType = (type) => {
+    if (!type) throw new Error('Query parameter "type" is required. Use "lubricants" or "petroleum".');
+    if (type !== 'lubricants' && type !== 'petroleum') {
+        throw new Error('Invalid "type" value. Allowed values are "lubricants" or "petroleum".');
+    }
+    return type;
+};
+
+// Function to get folder path based on query type
+const getFolderPath = (type) => {
+    const folders = {
+        lubricants: path.join(__dirname, 'uploads/excel-files/lubricants'),
+        petroleum: path.join(__dirname, 'uploads/excel-files/petroleum'),
+    };
+    return folders[type];
+};
+
+// Function to process a directory by a specific header
+const processDirectoryByHeader = (directoryPath, groupByHeader) => {
+    try {
+        const files = fs.readdirSync(directoryPath);
+        const aggregatedData = {};
+
+        files.forEach((file) => {
+            const filePath = path.join(directoryPath, file);
+            if (fs.lstatSync(filePath).isFile() && file.endsWith('.xlsx')) {
+                const sheetData = processExcelFileByHeader(filePath, groupByHeader);
+
+                // Merge data into aggregated result
+                for (const key in sheetData) {
+                    if (!aggregatedData[key]) aggregatedData[key] = 0;
+                    aggregatedData[key] += sheetData[key];
+                }
+            }
+        });
+
+        return aggregatedData;
+    } catch (error) {
+        console.error(`Error processing directory by ${groupByHeader}:`, error.message);
+        throw error;
+    }
+};
+
+// Function to process a single Excel file by a header
+const processExcelFileByHeader = (filePath, groupByHeader) => {
+    try {
+        const workbook = XLSX.readFile(filePath);
+        const sheets = workbook.SheetNames;
+        const groupedData = {};
+
+        sheets.forEach((sheetName) => {
+            const sheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+            if (jsonData.length === 0) return;
+
+            const headers = jsonData[0].map((h) => h.trim().toLowerCase());
+            if (validateHeaders(headers)) {
+                const indices = getColumnIndices(headers, [groupByHeader, 'quantity in su']);
+                const groupIndex = indices[groupByHeader];
+                const quantityIndex = indices['quantity in su'];
+
+                jsonData.slice(1).forEach((row) => {
+                    const groupValue = row[groupIndex]?.toString().trim() || 'UNKNOWN';
+                    const quantityInSU = parseFloat(row[quantityIndex]) || 0;
+
+                    if (!groupedData[groupValue]) groupedData[groupValue] = 0;
+                    groupedData[groupValue] += quantityInSU;
+                });
+            }
+        });
+
+        return groupedData;
+    } catch (error) {
+        console.error(`Error processing file ${filePath} by ${groupByHeader}:`, error.message);
+        throw error;
+    }
+};
+
+
+{/*-------------------------------- Data table  ------------------------------------------*/}
 
 // Process the Excel file and filter data based on year and month
 const processExcelFileForTable = (filePath, yearFilter, monthFilter) => {

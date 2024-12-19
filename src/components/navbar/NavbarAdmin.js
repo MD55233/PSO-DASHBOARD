@@ -18,13 +18,15 @@ import {
 	Input,
 	useColorModeValue,
 	useDisclosure,
-	useToast
+	useToast,
+	Container
 } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import React, { useState, useEffect } from 'react';
 import AdminNavbarLinks from 'components/navbar/NavbarLinksAdmin';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
+import FileManager from './FileManager';
 
 export default function AdminNavbar(props) {
 	const [scrolled, setScrolled] = useState(false);
@@ -300,9 +302,12 @@ export default function AdminNavbar(props) {
 				</Box>
 				<Box>
 				<Flex alignItems="center" p="10px" boxShadow={scrolled ? 'md' : 'none'}>
-	<Button colorScheme="teal" onClick={onOpen} mr="10px">
-		Upload file
-	</Button>
+				<Button colorScheme="teal" onClick={onOpen} ml="10px" borderRadius="5">
+  Upload file
+</Button>
+
+	  {/* Add the FileManager button */}
+	
 </Flex>
 
 
@@ -354,7 +359,10 @@ export default function AdminNavbar(props) {
 				</Box>
 			</Flex>
 			{secondary ? <Text color='white'>{message}</Text> : null}
+			
 		</Box>
+	
+	
 	);
 }
 

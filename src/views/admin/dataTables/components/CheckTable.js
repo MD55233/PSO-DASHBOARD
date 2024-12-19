@@ -26,6 +26,7 @@ import {
 // Custom components
 import Card from 'components/card/Card';
 import Menu from 'components/menu/MainMenu';
+import FileManager from 'components/navbar/FileManager';
 
 const columnHelper = createColumnHelper();
 
@@ -146,6 +147,7 @@ export default function CheckTable(props) {
         >
           Check Table
         </Text>
+          <FileManager />
         <Menu />
       </Flex>
       <Box>

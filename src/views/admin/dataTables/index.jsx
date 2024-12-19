@@ -26,6 +26,8 @@ import {
   AlertIcon,
 } from "@chakra-ui/react";
 import { FiFilter } from "react-icons/fi";
+import FileManager from 'components/navbar/FileManager';
+
 
 export default function CheckTable() {
   const [data, setData] = useState([]);
@@ -170,10 +172,11 @@ const calculateFilteredSum = () => {
 
       <Flex px="25px" mb="8px" justifyContent="space-between" align="center">
         <Text fontSize="22px" fontWeight="700">
-          Check Table
+          Data Table
         </Text>
 
-        <Flex align="center">
+        <Flex align="center" gap="4">
+        <FileManager />
           <Select
             placeholder="Select Year"
             width="150px"
@@ -198,7 +201,7 @@ const calculateFilteredSum = () => {
               </option>
             ))}
           </Select>
-          <Button ml="4" colorScheme="teal" onClick={fetchTableData}>
+          <Button  colorScheme="teal" onClick={fetchTableData} borderRadius="5">
             Fetch Data
           </Button>
         </Flex>
